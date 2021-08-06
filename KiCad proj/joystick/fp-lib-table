@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name FPC_connectros)(type KiCad)(uri ${KIPRJMOD}/FPC_connectros.pretty)(options "")(descr ""))
+  (lib (name HC49)(type KiCad)(uri ${KIPRJMOD}/HC49.pretty)(options "")(descr ""))
+)
