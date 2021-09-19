@@ -451,13 +451,15 @@ void Keyboard_Send(uint8_t *KeyMap)
     }
     if (btn_state != data) {
         int idx;
+        int c_idx = 0;
         int i = 0;
         uint8_t Keyboard_Buffer[2 + KEY_USB_DESC_MAX] = {2, };
 
         btn_state = data;
-        while (idx = __builtin_ffs(data) && i < KEY_USB_DESC_MAX) {
+        while ((idx = __builtin_ffs(data)) && (i < KEY_USB_DESC_MAX)) {
             data >>= idx;
-            Keyboard_Buffer[2 + i++] = KeyMap[idx];
+            c_idx += (idx - 1);
+            Keyboard_Buffer[2 + i++] = KeyMap[c_idx];
         }
         /* Reset the control token to inform upper layer that a transfer is ongoing */
         PrevXferComplete = 0;
