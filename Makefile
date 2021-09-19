@@ -43,7 +43,9 @@ DEFS		:=	$(BOARD)				\
 			USE_STDPERIPH_DRIVER
 
 LD_SCRIPT	:= $(ROOT_DIR)/device/STM32F103C8_FLASH.ld
-BIN_NAME	:= usb.elf
+PROJECT_NAME	:= joystick
+BIN_NAME		:= $(PROJECT_NAME).elf
+MAP_NAME		:= $(PROJECT_NAME).map
 
 ifeq ($(DEVICE), STM32F10X_MD)
 	export C_FLAGS	:= -mcpu=cortex-m3 -mthumb
@@ -67,7 +69,9 @@ export DEFINES	:= $(addprefix -D, $(DEFS))
 .PHONY: all periph_library usb_library clean
 
 all: periph_library usb_library $(BOOT_OBJ) $(OBJS)
-	$(Q)$(LD) $(OBJS) $(BOOT_OBJ) $(PERIPH_LIB_DIR)/build/* $(USB_LIB_DIR)/build/* $(LD_LIB_DIRS) $(LD_LIBS) -o $(BIN_NAME) -T$(LD_SCRIPT) -M > usb.map
+	$(Q)$(LD) $(OBJS) $(BOOT_OBJ) $(PERIPH_LIB_DIR)/build/* $(USB_LIB_DIR)/build/* $(LD_LIB_DIRS) $(LD_LIBS) -o $(BIN_NAME) -T$(LD_SCRIPT) -M > $(MAP_NAME)
+
+$(BIN_NAME): all
 
 $(BUILD_DIR)/%.o: $(CSRC_DIR)/%.c | $(BUILD_DIR)
 	$(Q)$(CC) $(INCLUDE) $(DEFINES) $(C_FLAGS) -c $< -o $@
@@ -91,5 +95,6 @@ flash_ocd:
 clean:
 	$(Q)$(RM) $(BUILD_DIR)
 	$(Q)$(RM) $(BIN_NAME)
+	$(Q)$(RM) $(MAP_NAME)
 	$(Q)$(MAKE) -C $(PERIPH_LIB_DIR) clean
 	$(Q)$(MAKE) -C $(USB_LIB_DIR) clean
