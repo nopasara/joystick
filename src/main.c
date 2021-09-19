@@ -63,7 +63,7 @@ int main(void)
 {
   JoySettings_t JoySet;
   uint8_t sched = 0;
-  uint8_t KeyMap[KEY_BTNS_ROW * KEY_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};
+  uint8_t KeyMap[KEY_BTNS_ROW * KEY_NUM_ROWS] = {1, 2, 3, 4, 5, 6, 7, 8};
 
   Set_System();
 

@@ -218,8 +218,8 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
     0x25,          /*Logical Maximum(8)*/
     /* 80 */
     0x08,
-    0x19,          /*Usage Minimum(0x1E)*/
-    0x1E,
+    0x19,          /*Usage Minimum(0x1D)*/
+    0x1D,
     0x29,          /*Usage Maximum(0x25)*/
     0x25,
     0x81,          /*Input(Array)*/
