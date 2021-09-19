@@ -868,4 +868,6 @@ Wire Wire Line
 Connection ~ 6700 4250
 Wire Wire Line
 	6700 4250 6700 4550
+Text GLabel 2600 3100 0    50   Input ~ 0
+3,3Vdd
 $EndSCHEMATC

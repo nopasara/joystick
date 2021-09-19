@@ -571,4 +571,20 @@ Wire Wire Line
 Connection ~ 5150 3550
 Wire Wire Line
 	5150 3550 6950 3550
+Text GLabel 5150 4650 0    50   Input ~ 0
+pb0
+Text GLabel 5250 3900 3    50   Input ~ 0
+pb1
+Text GLabel 5350 4650 0    50   Input ~ 0
+pb2
+Text GLabel 6300 4700 3    50   Input ~ 0
+gnd
+Text GLabel 5550 4150 3    50   Input ~ 0
+pb11
+Text GLabel 5650 4150 3    50   Input ~ 0
+pb12
+Text GLabel 5750 4150 3    50   Input ~ 0
+pb13
+Text GLabel 5850 4150 3    50   Input ~ 0
+pb14
 $EndSCHEMATC
