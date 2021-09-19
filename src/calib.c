@@ -105,7 +105,8 @@ calib_data_t *flash_claib_write(calib_data_t *st_addr, calib_data_t *data)
 
 /**
   * Function Name  : flash_check_calibrated
-  * Description    : Check whether the calibration data is valid
+  * Description    : Check whether the calibration data is valid, all fields
+  *                  of the structure are filled with data
   * Input          : None.
   * Output         : None.
   * Return         : 1 - calibration data is valid,
