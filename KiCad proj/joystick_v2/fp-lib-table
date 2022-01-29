@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name cherry_diode)(type KiCad)(uri "/home/maxim/joystick_proj/KiCad proj/cherry_diode.pretty")(options "")(descr ""))
+  (lib (name HC49)(type KiCad)(uri "/home/maxim/joystick_proj/KiCad proj/HC49.pretty")(options "")(descr ""))
+  (lib (name FPC_connectros)(type KiCad)(uri "/home/maxim/joystick_proj/KiCad proj/FPC_connectros.pretty")(options "")(descr ""))
+)

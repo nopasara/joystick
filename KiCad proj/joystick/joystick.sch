@@ -20,22 +20,9 @@ USB_DM
 Text GLabel 8350 4850 3    50   Input ~ 0
 USB_DP
 Wire Wire Line
-	4500 4150 4500 3850
-Wire Wire Line
 	4200 4050 4200 3750
 Wire Wire Line
 	3900 3650 3900 3950
-$Comp
-L Device:R R3
-U 1 1 60CC23D9
-P 4500 4300
-F 0 "R3" H 4570 4346 50  0000 L CNN
-F 1 "10k" H 4570 4255 50  0000 L CNN
-F 2 "Resistor_SMD:R_0201_0603Metric_Pad0.64x0.40mm_HandSolder" V 4430 4300 50  0001 C CNN
-F 3 "~" H 4500 4300 50  0001 C CNN
-	1    4500 4300
-	1    0    0    -1  
-$EndComp
 $Comp
 L Device:R R2
 U 1 1 60CC20F5
@@ -136,8 +123,6 @@ Wire Wire Line
 Wire Wire Line
 	4300 5250 4300 4750
 Wire Wire Line
-	4500 4450 4500 5950
-Wire Wire Line
 	4300 5550 4300 5950
 Wire Wire Line
 	4600 5650 4600 5950
@@ -167,19 +152,11 @@ Connection ~ 4300 4750
 Connection ~ 4300 5950
 Wire Wire Line
 	4300 4750 5250 4750
-Wire Wire Line
-	4300 5950 4500 5950
 Connection ~ 3900 3650
 Wire Wire Line
 	3900 3650 5250 3650
 Wire Wire Line
 	3900 5950 4000 5950
-Connection ~ 4500 3850
-Connection ~ 4500 5950
-Wire Wire Line
-	4500 3850 5250 3850
-Wire Wire Line
-	4500 5950 4600 5950
 Connection ~ 4600 4850
 Connection ~ 4600 5950
 Wire Wire Line
@@ -701,8 +678,6 @@ Wire Wire Line
 Wire Wire Line
 	3300 4250 3300 3850
 Wire Wire Line
-	3300 3850 4500 3850
-Wire Wire Line
 	2300 4350 3600 4350
 Wire Wire Line
 	3600 4350 3600 4650
@@ -798,14 +773,7 @@ F 3 "~" H 3900 2800 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	5050 2550 5050 2750
-Wire Wire Line
-	5050 2550 5250 2550
-Wire Wire Line
 	3500 2400 5050 2400
-Wire Wire Line
-	5050 2400 5050 2550
-Connection ~ 5050 2550
 Wire Wire Line
 	6750 1250 6750 1900
 Wire Wire Line
@@ -870,4 +838,10 @@ Wire Wire Line
 	6700 4250 6700 4550
 Text GLabel 2600 3100 0    50   Input ~ 0
 3,3Vdd
+Wire Wire Line
+	3300 3850 5250 3850
+Wire Wire Line
+	4300 5950 4600 5950
+Wire Wire Line
+	5050 2400 5050 2750
 $EndSCHEMATC

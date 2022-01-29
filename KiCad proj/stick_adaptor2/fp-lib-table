@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name stick)(type KiCad)(uri "/home/maxim/joystick_proj/KiCad proj/stick.pretty")(options "")(descr ""))
+)
