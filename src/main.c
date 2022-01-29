@@ -47,7 +47,7 @@ RCC_ClocksTypeDef RCC_ClockFreq;
 extern int JoystickCalibrated;
 
 /* Buffer aligned to uint16_t since PMAtoUserCopy function has memory corruption bug */
-__IO uint8_t SetRepBuff[16];
+__IO uint8_t SetRepBuff[sizeof(calib_data_t) + 2];
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -63,7 +63,6 @@ int main(void)
 {
   JoySettings_t JoySet;
   uint8_t sched = 0;
-  uint8_t KeyMap[KEY_BTNS_ROW * KEY_NUM_ROWS] = {1, 2, 3, 4, 5, 6, 7, 8};
 
   Set_System();
 
@@ -84,7 +83,7 @@ int main(void)
         if (sched && JoystickCalibrated) {
           Joystick_Send(CalData, &JoySet);
         } else {
-          Keyboard_Send(KeyMap);
+          Keyboard_Send(CalData);
         }
         sched ^= 1;
       }

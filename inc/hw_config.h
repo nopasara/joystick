@@ -54,19 +54,19 @@
 typedef struct JoySettings {
     uint16_t *X_map;
     uint16_t *Y_map;
-    float    R_norm_coef;
-    float    X_pos_step;
-    float    X_neg_step;
-    float    Y_pos_step;
-    float    Y_neg_step;
+    float    step_coef;
+    float    x_norm_coef;
+    float    y_norm_coef;
 } JoySettings_t;
 
 /* Exported constants --------------------------------------------------------*/
 /* Exported varables  --------------------------------------------------------*/
 extern calib_data_t *CalData;
+extern int JoystickCalibrated;
 /* Exported macro ------------------------------------------------------------*/
-#define MAX(a, b)           ((a > b) ?  a : b)
-#define MIN(a, b)           ((a < b) ?  a : b)
+#define ALIGN(val, byte)    ((((val) + (byte) - 1) / (byte)) * (byte))
+#define MAX(a, b)           (((a) > (b)) ?  (a) : (b))
+#define MIN(a, b)           (((a) < (b)) ?  (a) : (b))
 #define ADC_CYC_DELAY(time) {                          \
     register int i = time * BOARD_ADC_DELAY_RATIO;     \
     __asm__ __volatile__ ("1:SUBS %0, #1\n"            \
@@ -86,11 +86,12 @@ void Leave_LowPowerMode(void);
 void USB_Interrupts_Config(void);
 void USB_Cable_Config (FunctionalState NewState);
 void Joystick_Send(calib_data_t *cal, JoySettings_t *set);
-void Keyboard_Send(uint8_t *KeyMap);
+void Keyboard_Send(calib_data_t *CalibData);
 void Get_SerialNum(void);
 void ADC_avg_read(uint32_t iter, uint16_t *adc1_val, uint16_t *adc2_val);
 void Joystick_setup(calib_data_t *cal_data, JoySettings_t *set);
 void calibrate_cmd_process(volatile uint8_t *cmdBuff, calib_data_t **CalData, JoySettings_t *JoySet);
+void Signal_Unconfigured(uint8_t enable);
 #endif  /*__HW_CONFIG_H*/
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

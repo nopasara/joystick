@@ -38,6 +38,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_desc.h"
+#include "calib.h"
+#include "assert.h"
+
+static_assert(sizeof(calib_data_t) < 253, "Calibration data doesn't fit in the descriptor");
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -119,7 +124,8 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] =
 
     0x81,          /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,          /*bmAttributes: Interrupt endpoint*/
-    0x10,          /*wMaxPacketSize: 16 Byte max */
+                   /*wMaxPacketSize: calibration data size + 2 report type Bytes max */
+    (sizeof(calib_data_t) + 2),
     0x00,
     0x10,          /*bInterval: Polling Interval (16 ms)*/
     /* 34 */
@@ -213,15 +219,15 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
     0x08,
     0x75,          /*Report Size(8)*/
     0x08,
-    0x15,          /*Logical Minimum(0)*/
+    0x15,          /*Logical Minimum(0x0)*/
     0x00,
-    0x25,          /*Logical Maximum(8)*/
+    0x25,          /*Logical Maximum(0xFF)*/
     /* 80 */
-    0x08,
-    0x19,          /*Usage Minimum(0x1D)*/
-    0x1D,
-    0x29,          /*Usage Maximum(0x25)*/
-    0x25,
+    0xFF,
+    0x19,          /*Usage Minimum(0x0)*/
+    0x0,
+    0x29,          /*Usage Maximum(0xFF)*/
+    0xFF,
     0x81,          /*Input(Array)*/
     0x00,
     0xC0,          /*End Collection*/
@@ -246,8 +252,8 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
     /* 104 */
     0x75,          /*     REPORT_SIZE (8)               */
     0x08,
-    0x95,          /*     REPORT_COUNT (15)              */
-    0x0f,
+    0x95,          /*     REPORT_COUNT (sizeof(calib_data_t))*/
+    sizeof(calib_data_t) + 1,
     0x81,          /*     INPUT (Data,Var,Abs,Vol)      */
     0x82,
     0xc0           /*     END_COLLECTION                */

@@ -40,6 +40,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32_it.h"
+#include "hw_config.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -191,88 +192,11 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
   USB_Istr();
 }
 
-#if defined(STM32L1XX_MD) || defined(STM32L1XX_HD)|| defined(STM32L1XX_MD_PLUS)
-
-/**
-  * Function Name  : USB_FS_WKUP_IRQHandler
-  * Description    : This function handles USB WakeUp interrupt request.
-  * Input          : None
-  * Output         : None
-  * Return         : None
-  */
 void USB_FS_WKUP_IRQHandler(void)
 {
   EXTI_ClearITPendingBit(EXTI_Line18);
 }
-#endif
 
-#if defined (USE_NUCLEO)
-/**
-  * Function Name  : EXTI_IRQHandler
-  * Description    : This function handles External lines  interrupt request.
-  * Input          : None
-  * Output         : None
-  * Return         : None
-  */
-
-void EXTI15_10_IRQHandler(void)
-{
-  if (EXTI_GetITStatus(EXTI_Line13) != RESET)
-  {
-    /* Check if the remote wakeup feature is enabled (it could be disabled 
-        by the host through ClearFeature request) */
-    if ((pInformation->Current_Feature & 0x20) && (DevRemoteWakeup == 0))
-    {      
-      pInformation->Current_Feature &= ~0x20; 
-      /* Set DevRemoteWakeup when doing the remote wakeup */
-      DevRemoteWakeup = 1;
-
-      /* Exit low power mode and re-configure clocks */
-      Resume(RESUME_INTERNAL);
-    }
-  
-    /* Clear the EXTI line pending bit */
-    EXTI_ClearITPendingBit(EXTI_Line13);
-  }
-}
-#endif
-
-#if !(defined (USE_NUCLEO) || defined(USE_RAW))
-/**
-  * Function Name  : EXTI_IRQHandler
-  * Description    : This function handles External lines  interrupt request.
-  * Input          : None
-  * Output         : None
-  * Return         : None
-  */
-
-#if defined(STM32L1XX_MD) || defined(STM32L1XX_HD)|| defined(STM32L1XX_MD_PLUS)
-void EXTI0_IRQHandler(void)
-#elif defined (STM32F37X)
-void EXTI2_TS_IRQHandler(void)
-#else
-void EXTI9_5_IRQHandler(void)
-#endif
-{
-  if (EXTI_GetITStatus(KEY_BUTTON_EXTI_LINE) != RESET)
-  {
-    /* Check if the remote wakeup feature is enabled (it could be disabled 
-        by the host through ClearFeature request) */
-    if ((pInformation->Current_Feature & 0x20) && (DevRemoteWakeup == 0))
-    {      
-      pInformation->Current_Feature &= ~0x20; 
-      /* Set DevRemoteWakeup when doing the remote wakeup */
-      DevRemoteWakeup = 1;
-
-      /* Exit low power mode and re-configure clocks */
-      Resume(RESUME_INTERNAL);
-    }
-  
-    /* Clear the EXTI line pending bit */
-    EXTI_ClearITPendingBit(KEY_BUTTON_EXTI_LINE);
-  }
-}
-#endif /* USE_NUCLEO */
 /**
   * Function Name  : USBWakeUp_IRQHandler
   * Description    : This function handles USB WakeUp interrupt request.
@@ -285,34 +209,24 @@ void USBWakeUp_IRQHandler(void)
   EXTI_ClearITPendingBit(EXTI_Line18);
 }
 
-#if defined(USE_STM3210E_EVAL)
-  #if defined(USB_USE_VBUS_SENSING)
-
 /**
-  * Function Name  : EXTI_IRQHandler
-  * Description    : This function handles External lines  interrupt request for VBUS.
+  * Function Name  : TIM1_UP_IRQHandler
+  * Description    : This function handles Timer1 update interrupt request.
   * Input          : None
   * Output         : None
   * Return         : None
   */
-void EXTI0_IRQHandler(void)
+
+void TIM1_UP_IRQHandler(void)
 {
-  /* Check The presence of VBUS */ 
-  if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0) == SET) 
-  {
-    /* Normal USB operation: call USB_Init when cable connection */
-    USB_Init();
+  static int led_state;
+
+  TIM_ClearFlag(TIM1, TIM_FLAG_Update);
+  led_state ^= 1;
+  GPIO_WriteBit(KEY_PORT, KEY_LED, led_state);
+  if (JoystickCalibrated) {
+    GPIO_WriteBit(KEY_PORT, KEY_LED, 0);
+    Signal_Unconfigured(DISABLE);
   }
-  else
-  {
-    /* Stop USB operation: call PowerOff when cable is disconected*/
-    PowerOff();
-  }
-  
-  EXTI_ClearITPendingBit(EXTI_Line0); 
 }
-
-  #endif /* USB_USE_VBUS_SENSING */
-#endif /* USE_STM3210E_EVAL */
-
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

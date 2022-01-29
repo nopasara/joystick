@@ -42,6 +42,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
+#include "stm32f10x_conf.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
@@ -54,7 +55,7 @@
 
 /* Define the STM32F10x hardware depending on the used evaluation board */
   #define USB_DISCONNECT                      GPIOA
-  #define USB_DISCONNECT_PIN                  GPIO_Pin_10
+  #define USB_DISCONNECT_PIN                  GPIO_Pin_15
 
   #define RCC_APB2Periph_GPIO_DISCONNECT      RCC_APB2Periph_GPIOA
 
@@ -70,16 +71,20 @@
 
 /* Keyboard pin setup */
   #define KEY_PORT                            GPIOB
-  #define KEY_ROW_SEL_VAL                     GPIO_Pin_0, GPIO_Pin_1
-  #define KEY_ROW_SEL                         (GPIO_Pin_0 | GPIO_Pin_1)
-  #define KEY_ROW                             (GPIO_Pin_11              \
-                                              | GPIO_Pin_12            \
-                                              | GPIO_Pin_13            \
-                                              | GPIO_Pin_14)
-  #define KEY_ROW_MASK                        (0xfu)
-  #define KEY_ROW_SHIFT                       (11)
-  #define KEY_NUM_ROWS                        (2)
-  #define KEY_BTNS_ROW                        (4)
+  #define KEY_LED                             GPIO_Pin_15
+  #define KEY_0                               (GPIO_Pin_0)
+  #define KEY_1                               (GPIO_Pin_10)
+  #define KEY_2                               (GPIO_Pin_12)
+  #define KEY_3                               (GPIO_Pin_13)
+  #define KEY_4                               (GPIO_Pin_1)
+  #define KEY_5                               (GPIO_Pin_2)
+  #define KEY_6                               (GPIO_Pin_11)
+  #define KEY_7                               (GPIO_Pin_14)
+  #define KEY_MASK                            (  KEY_0 | KEY_1 \
+                                               | KEY_2 | KEY_3 \
+                                               | KEY_4 | KEY_5 \
+                                               | KEY_6 | KEY_7)
+  #define NUM_KEYS                            (8)
   #define KEY_USB_DESC_MAX                    (8)
 
 /* Exported macro ------------------------------------------------------------*/

@@ -46,6 +46,7 @@ enum calib_cmd_type {
     CALIBRATE_AVG_STOP,
     CALIBRATE_MANUAL,
     CALIBRATE_SHOW,
+    CALIBRATE_DEBUG,
 };
 
 /* Private define ------------------------------------------------------------*/
@@ -55,9 +56,10 @@ enum calib_cmd_type {
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 ErrorStatus HSEStartUpStatus;
-const uint16_t key_row_sel[KEY_NUM_ROWS] = {KEY_ROW_SEL_VAL};
 uint16_t X, Y;
 int JoystickCalibrated;
+const uint16_t keys[NUM_KEYS] = {KEY_0, KEY_1, KEY_2, KEY_3,
+                                 KEY_4, KEY_5, KEY_6, KEY_7};
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint8_t PrevXferComplete;
@@ -65,7 +67,9 @@ extern __IO uint8_t PrevXferComplete;
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 static void Delay(__IO uint32_t nTime);
+static void TIM1_Configuration(void);
 static void ADC_Configuration(void);
+static void TIM1_Interrupts_Config(void);
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -84,6 +88,10 @@ void Set_System(void)
        system_stm32xxx.c file
      */ 
 
+  /* Disable JTAG */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+
   /******************************************/
   /*           Enable the PWR clock         */
   /******************************************/
@@ -99,29 +107,26 @@ void Set_System(void)
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   /********************************************/
-  /*  Enable joystich pins                    */
+  /*  Enable joystick pins                    */
   /********************************************/
   GPIO_InitStructure.GPIO_Pin = JS_ADC1_PIN | JS_ADC2_PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   GPIO_Init(JS_PORT, &GPIO_InitStructure);
 
-  GPIO_InitStructure.GPIO_Pin = JS_BTN_PIN;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(JS_PORT, &GPIO_InitStructure);
-
   /********************************************/
   /*  Enable keyboard pins                    */
   /********************************************/
-  GPIO_InitStructure.GPIO_Pin = KEY_ROW_SEL;
+  GPIO_InitStructure.GPIO_Pin = KEY_LED;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
   GPIO_Init(KEY_PORT, &GPIO_InitStructure);
 
-  GPIO_InitStructure.GPIO_Pin = KEY_ROW;
+  GPIO_WriteBit(KEY_PORT, KEY_LED, Bit_RESET);
+
+  GPIO_InitStructure.GPIO_Pin = KEY_MASK;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
   GPIO_Init(KEY_PORT, &GPIO_InitStructure);
 
   /********************************************/
@@ -139,9 +144,37 @@ void Set_System(void)
   /*   configures the hardware resources      */
   /********************************************/
 
+  /* 2 bit for pre-emption priority, 2 bits for subpriority */
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+
+  TIM1_Configuration();
   ADC_Configuration();
   CalData = flash_claib_find((calib_data_t *)&_calibdata);
   JoystickCalibrated = flash_check_calibrated(CalData);
+}
+
+/*******************************************************************************
+* Function Name : TIM1_Configuration.
+* Description   : Configure the TIM1.
+* Input         : None.
+* Output        : None.
+* Return value  : None.
+*******************************************************************************/
+static void TIM1_Configuration(void)
+{
+    /* 72 MHz - 1 second event */
+    TIM_TimeBaseInitTypeDef TIM1_settings = {
+        .TIM_Prescaler          = 0xFFFF,
+        .TIM_CounterMode        = TIM_CounterMode_Up,
+        .TIM_Period             = 1100,
+        .TIM_ClockDivision      = TIM_CKD_DIV1,
+        .TIM_RepetitionCounter  = 0};
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+    TIM_UpdateRequestConfig(TIM1, TIM_UpdateSource_Regular);
+    TIM_TimeBaseInit(TIM1, &TIM1_settings);
+    TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+    TIM1_Interrupts_Config();
 }
 
 /*******************************************************************************
@@ -149,9 +182,9 @@ void Set_System(void)
 * Description   : Configure the ADC1 and ADC2 in double mode.
 * Input         : None.
 * Output        : None.
-* Return value  : The direction value.
+* Return value  : None.
 *******************************************************************************/
-void ADC_Configuration(void)
+static void ADC_Configuration(void)
 {
   ADC_InitTypeDef ADC_settings = {  .ADC_Mode = ADC_Mode_RegSimult,
                                     .ADC_ScanConvMode = DISABLE,
@@ -207,8 +240,26 @@ void ADC_avg_read(uint32_t iter, uint16_t *adc1_val, uint16_t *adc2_val)
   *adc1_val = tmp_1;
   *adc2_val = tmp_2;
 }
+
 /**
-  * Function Name  : Joystick_Setup
+  * Function Name  : Signal_Unconfigured.
+  * Description    : Signal by the led flashing that the joystick is
+  *                  unconfigured.
+  * Input          : ENABLE - Enable or disabe the led flashing.
+  * Output         : None.
+  * Return         : None.
+  */
+void Signal_Unconfigured(uint8_t enable)
+{
+    if (enable) {
+        TIM_Cmd(TIM1, ENABLE);
+    } else {
+        TIM_Cmd(TIM1, DISABLE);
+    }
+}
+
+/**
+  * Function Name  : Joystick_Setup.
   * Description    : Fill the joystick setup structure.
   * Input          : cal_data - calibration data structure
   *                  set - joystick settings structure
@@ -220,6 +271,7 @@ void Joystick_setup(calib_data_t *cal_data, JoySettings_t *set)
     if (!JoystickCalibrated) {
         set->X_map = &X;
         set->Y_map = &Y;
+        Signal_Unconfigured(ENABLE);
         return;
     }
 
@@ -231,16 +283,16 @@ void Joystick_setup(calib_data_t *cal_data, JoySettings_t *set)
         set->Y_map = &Y;
     }
 
-    set->R_norm_coef = AXIS_MAX_VAL - cal_data->st.R;
+    uint16_t x_range = cal_data->st.Xmax - cal_data->st.Xavg;
+    uint16_t y_range = cal_data->st.Ymax - cal_data->st.Yavg;
+    uint16_t max_range = MAX(x_range, y_range);
 
-    set->X_pos_step = (float)AXIS_MAX_VAL
-                        / (cal_data->st.Xmax - cal_data->st.Xavg);
-    set->X_neg_step = (float)AXIS_MAX_VAL
-                        / (cal_data->st.Xmin - cal_data->st.Xavg);
-    set->Y_pos_step = (float)AXIS_MAX_VAL
-                        / (cal_data->st.Ymax - cal_data->st.Yavg);
-    set->Y_neg_step = (float)AXIS_MAX_VAL
-                        / (cal_data->st.Ymin - cal_data->st.Yavg);
+    set->x_norm_coef = (float)max_range / x_range;
+    set->y_norm_coef = (float)max_range / y_range;
+
+    uint16_t scens_rng = max_range - cal_data->st.R;
+
+    set->step_coef = (float)EXP_COEF / scens_rng;
 }
 
 /**
@@ -301,9 +353,6 @@ void USB_Interrupts_Config(void)
 {
   NVIC_InitTypeDef NVIC_InitStructure;
 
-  /* 2 bit for pre-emption priority, 2 bits for subpriority */
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-
   /* Enable the USB interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
@@ -318,6 +367,25 @@ void USB_Interrupts_Config(void)
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_Init(&NVIC_InitStructure); 
 #endif /* USB_LOW_PWR_MGMT_SUPPORT */ 
+}
+
+/**
+  * Function Name  : TIM1_Interrupts_Config.
+  * Description    : Configures the TIM1 interrupt.
+  * Input          : None.
+  * Output         : None.
+  * Return         : None.
+  */
+static void TIM1_Interrupts_Config(void)
+{
+  NVIC_InitTypeDef NVIC_InitStructure;
+
+  /* Enable the USB interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
 }
 
 /**
@@ -349,7 +417,7 @@ void USB_Cable_Config (FunctionalState NewState)
   */
 uint8_t joy_btn_state(void)
 {
-    return (GPIO_ReadInputDataBit(JS_PORT, JS_BTN_PIN)) ? 0 : 1;
+    return ((GPIO_ReadInputDataBit(JS_PORT, JS_BTN_PIN)) ? 0 : 1);
 }
 
 /**
@@ -363,58 +431,60 @@ void Joystick_Send(calib_data_t *cal, JoySettings_t *set)
 {
   uint8_t Mouse_Buffer[5] = {1, 0, 0, 0};
   uint8_t X_norm, Y_norm;
-  uint8_t Rvect;
+  uint32_t Rvect;
   int8_t  X_sign, Y_sign;
   static uint8_t btn_last;
+  float x_coef, y_coef;
 
+  /* maps global variables X and Y to HW ADCs */
   ADC_avg_read(ADC_SAMPLE_COUNT, set->X_map, set->Y_map);
   /* Center and adjust AXIS */
-  if (X < cal->st.Xavg) {
-    X = MAX(X, cal->st.Xmin);
-    X_norm = (int8_t)((X - cal->st.Xavg) * set->X_neg_step);
-    X_sign = (cal->st.l_r_rev) ? 1 : -1;
-  } else {
-    X = MIN(X, cal->st.Xmax);
-    X_norm = (int8_t)((X - cal->st.Xavg) * set->X_pos_step);
+  if (X > cal->st.Xavg) {
+    X -= cal->st.Xavg;
     X_sign = (cal->st.l_r_rev) ? -1 : 1;
-  }
-  if (Y < cal->st.Yavg) {
-    Y = MAX(Y, cal->st.Ymin);
-    Y_norm = (int8_t)((Y - cal->st.Yavg) * set->Y_neg_step);
-    Y_sign = (cal->st.u_d_rev) ? 1 : -1;
   } else {
-    Y = MIN(Y, cal->st.Ymax);
-    Y_norm = (int8_t)((Y - cal->st.Yavg) * set->Y_pos_step);
+    X = cal->st.Xavg - X;
+    X_sign = (cal->st.l_r_rev) ? 1 : -1;
+  }
+  if (Y > cal->st.Yavg) {
+    Y -= cal->st.Yavg;
     Y_sign = (cal->st.u_d_rev) ? -1 : 1;
-  }
-  /* Calculate radial vector */
-  Rvect = sqrt((X_norm * X_norm) + (Y_norm * Y_norm));
-  /* Fix bad calibration values */
-  Rvect = (Rvect > AXIS_MAX_VAL) ? AXIS_MAX_VAL : Rvect;
-  /* Imply the dead zone */
-  if (Rvect > cal->st.R) {
-    Rvect -= cal->st.R;
-    /* Imply the exponenitional acceleration */
-    Rvect = exp((Rvect / set->R_norm_coef) * EXP_COEF) - 1;
-    /* Convert radial to square acceleration */
-    if (X_norm > Y_norm) {
-        float coef = (float)Y_norm / X_norm;
-        X_norm = Rvect * X_sign;
-        Y_norm = Rvect * coef * Y_sign;
-    } else {
-        float coef = (float)X_norm / Y_norm;
-        Y_norm = Rvect * Y_sign;
-        X_norm = Rvect * coef * X_sign;
-    }
   } else {
-    X_norm = 0;
-    Y_norm = 0;
+    Y = cal->st.Yavg - Y;
+    Y_sign = (cal->st.u_d_rev) ? 1 : -1;
   }
-  if (X_norm != 0 || Y_norm != 0 || btn_last != joy_btn_state()) {
+
+  X *= set->x_norm_coef;
+  Y *= set->y_norm_coef;
+
+  Rvect = sqrt((X * X) + (Y * Y));
+  x_coef = (float)X / Rvect;
+  y_coef = (float)Y / Rvect;
+
+  if (Rvect > cal->st.R) {
+    Rvect = exp((float)(Rvect - cal->st.R) * set->step_coef) - 1;
+
+    X = Rvect * x_coef;
+    if (X > AXIS_MAX_VAL) {
+        X = AXIS_MAX_VAL;
+    }
+    X_sign *= X;
+
+    Y = Rvect * y_coef;
+    if (Y > AXIS_MAX_VAL) {
+        Y = AXIS_MAX_VAL;
+    }
+    Y_sign *= Y;
+  } else {
+      X_sign = 0;
+      Y_sign = 0;
+  }
+
+  if (X_sign != 0 || Y_sign != 0 || btn_last != joy_btn_state()) {
     btn_last = joy_btn_state();
     Mouse_Buffer[1] = btn_last;
-    Mouse_Buffer[2] = X_norm;
-    Mouse_Buffer[3] = Y_norm;
+    Mouse_Buffer[2] = X_sign;
+    Mouse_Buffer[3] = Y_sign;
 
     /* Reset the control token to inform upper layer that a transfer is ongoing */
     PrevXferComplete = 0;
@@ -430,36 +500,35 @@ void Joystick_Send(calib_data_t *cal, JoySettings_t *set)
 /**
   * Function Name : Keyboard_Send.
   * Description   : prepares buffer to be sent containing keybaord event infos.
-  * Input         : KeyMap mapping of the key values.
+  * Input         : CalibData pointer to the structure containing mapping of the
+  *                 key values.
   * Output        : None.
   * Return value  : None.
   */
-void Keyboard_Send(uint8_t *KeyMap)
+void Keyboard_Send(calib_data_t *CalibData)
 {
-    assert_param(KEY_BTNS_ROW * KEY_NUM_ROWS < 32);
+    assert_param(NUM_KEYS < 32);
 
     static uint32_t btn_state;
     register uint32_t data = 0;
 
-    for (register int i = 0; i < KEY_NUM_ROWS; ++i) {
-        uint32_t shift = i * KEY_BTNS_ROW;
-
-        GPIO_WriteBit(KEY_PORT, key_row_sel[i], Bit_SET);
-        while (GPIO_ReadInputDataBit(KEY_PORT, key_row_sel[i]) == Bit_RESET);
-        data |= ((GPIO_ReadInputData(KEY_PORT) & KEY_ROW) >> KEY_ROW_SHIFT) << shift;
-        GPIO_WriteBit(KEY_PORT, key_row_sel[i], Bit_RESET);
-    }
+    data = GPIO_ReadInputData(KEY_PORT) & KEY_MASK;
     if (btn_state != data) {
-        int idx;
-        int c_idx = 0;
-        int i = 0;
+        int i = 0, j = 0;
         uint8_t Keyboard_Buffer[2 + KEY_USB_DESC_MAX] = {2, };
 
         btn_state = data;
-        while ((idx = __builtin_ffs(data)) && (i < KEY_USB_DESC_MAX)) {
-            data >>= idx;
-            c_idx += (idx - 1);
-            Keyboard_Buffer[2 + i++] = KeyMap[c_idx];
+        while (data && (i < KEY_USB_DESC_MAX) && (j < NUM_KEYS)) {
+            if (data & keys[j]) {
+                data &= ~keys[j];
+                if (CalibData->st.KeyMap[j] >= 0xE0 && CalibData->st.KeyMap[j] < 0xE8) {
+                    /* LCtrl, LShift, LAlt, LGUI, RCtrl, ... */
+                    Keyboard_Buffer[1] |= 1 << (CalibData->st.KeyMap[j] & 0xF);
+                } else {
+                    Keyboard_Buffer[2 + i++] = CalibData->st.KeyMap[j];
+                }
+            }
+            ++j;
         }
         /* Reset the control token to inform upper layer that a transfer is ongoing */
         PrevXferComplete = 0;
@@ -482,7 +551,7 @@ void Keyboard_Send(uint8_t *KeyMap)
   */
 void calibrate_cmd_process(volatile uint8_t *cmdBuff, calib_data_t **CalData, JoySettings_t *JoySet)
 {
-    uint8_t buf[16] = {3, };
+    uint8_t buf[ALIGN(sizeof(calib_data_t) + 1, 2)] = {3, };
     calib_data_t *buf_w = (calib_data_t *)&buf[1];
     static uint16_t count = 1,
                     CalibXmin = 0xffff,
@@ -544,10 +613,25 @@ void calibrate_cmd_process(volatile uint8_t *cmdBuff, calib_data_t **CalData, Jo
         break;
     case CALIBRATE_SHOW:
         buf_w->st = (*CalData)->st;
-        USB_SIL_Write(EP1_IN, buf, 15);
-        SetEPTxValid(ENDP1);
-        if (cmdBuff[0] == REP_CALIBRATE)
-            cmdBuff[0] = 0;
+        if (PrevXferComplete == 1) {
+            PrevXferComplete = 0;
+            USB_SIL_Write(EP1_IN, buf, sizeof(calib_data_t) + 1);
+            SetEPTxValid(ENDP1);
+            if (cmdBuff[0] == REP_CALIBRATE)
+                cmdBuff[0] = 0;
+        }
+        break;
+    case CALIBRATE_DEBUG:
+        if (PrevXferComplete == 1) {
+            PrevXferComplete = 0;
+            ADC_avg_read(ADC_SAMPLE_COUNT, JoySet->X_map, JoySet->Y_map);
+            *(uint16_t *)&buf[1] = *JoySet->X_map;
+            *(uint16_t *)&buf[3] = *JoySet->Y_map;
+            USB_SIL_Write(EP1_IN, buf, 5);
+            SetEPTxValid(ENDP1);
+            if (cmdBuff[0] == REP_CALIBRATE)
+                cmdBuff[0] = 0;
+        }
         break;
     }
 }
@@ -596,7 +680,7 @@ void Get_SerialNum(void)
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 {
   uint8_t idx = 0;
-  
+
   for( idx = 0 ; idx < len ; idx ++)
   {
     if( ((value >> 28)) < 0xA )
